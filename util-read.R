@@ -338,7 +338,7 @@ read.issues = function(data.path) {
 
     ## handle the case that the list of commits is empty
     if (inherits(issue.data, 'try-error')) {
-        logging::logwarn("There are no Github issue data available for the current environment.")
+        logging::logwarn("There is no Github issue data available for the current environment.")
         logging::logwarn("Datapath: %s", data.path)
         return(data.frame())
     }
@@ -372,4 +372,25 @@ read.issues = function(data.path) {
 
     logging::logdebug("read.issues: finished.")
     return(issue.data)
+}
+
+
+read.mboxparsing = function(data.path) {
+
+    filepath = file.path(data.path, "mboxparsing.list")
+
+    mboxparsing.data = try(read.table(filepath, header = FALSE, sep = ";", strip.white = TRUE,
+                                       encoding = "UTF-8"), silent = TRUE)
+
+    if (inherits(mboxparsing.data, 'try-error')) {
+        logging::logwarn("There are mailbox parsing results available for the current environment.")
+        logging::logwarn("Datapath: %s", data.path)
+        return(data.frame())
+    }
+
+    colnames(mboxparsing.data) = c("file", "artifact.name", "message.id")
+
+    mboxparsing.data[, "artifact"] = paste(mboxparsing.data[["file"]], mboxparsing.data[["artifact.name"]], sep = "::")
+
+    return(mboxparsing.data)
 }

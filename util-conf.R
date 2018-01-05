@@ -341,6 +341,12 @@ ProjectConf = R6::R6Class("ProjectConf", inherit = Conf,
                                       type = "logical",
                                       allowed = c(TRUE, FALSE),
                                       allowed.number = 1
+                                  ),
+                                  mboxparsing = list(
+                                      default = FALSE,
+                                      type = "logical",
+                                      allowed = c(TRUE, FALSE),
+                                      allowed.number = 1
                                   )
                               ),
 
@@ -690,7 +696,9 @@ NetworkConf = R6::R6Class("NetworkConf", inherit = Conf,
                     "pasta",
                     # issue information
                     "issue.id", "issue.state", "creation.date", "closing.date", "is.pull.request",
-                    "author.name", "author.mail", "event.date", "event.name"
+                    "author.name", "author.mail", "event.date", "event.name",
+                    # mboxparsing information
+                    "mboxparsing"
                 ),
                 allowed.number = Inf
             ),

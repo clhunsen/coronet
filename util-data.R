@@ -50,6 +50,7 @@ ProjectData = R6::R6Class("ProjectData",
         artifacts = NULL, # list
         synchronicity = NULL, # data.frame
         pasta = NULL, # data.frame
+        mboxparsing = NULL, #data.frame
         ## mails
         mails = NULL, # data.frame
         ## authors
@@ -97,7 +98,6 @@ ProjectData = R6::R6Class("ProjectData",
         #' to 'commits.filtered'.
         #' Add synchronicity and pasta data if configured in 'project.conf'.
         filter.commits = function() {
-
             logging::logdebug("filter.commits: starting.")
 
             ## do not compute anything more than once
@@ -140,6 +140,13 @@ ProjectData = R6::R6Class("ProjectData",
                 commit.data = private$add.pasta.data(commit.data)
             }
 
+
+            ## add mboxparsing if wanted
+            if (private$project.conf$get.value("mboxparsing")) {
+                self$get.mboxparsing()
+                commit.data = private$add.mboxparsing.data(commit.data)
+            }
+
             ## store the commit data
             private$commits.filtered = commit.data
             logging::logdebug("filter.commits: finished.")
@@ -167,6 +174,34 @@ ProjectData = R6::R6Class("ProjectData",
                     pasta.item = self$get.pasta.items(commit.hash = data[i, "hash"])
                     if(!length(pasta.item) == 0) {
                         data$pasta[i] = I(list(pasta.item))
+                    }
+                }
+            }
+            return(data)
+        },
+
+        ## * * mboxparsing data -------------------------------------------
+
+        #' Add the mboxparsing data to the given data frame for further analysis.
+        #'
+        #' @param data the base data as data frame to append the mboxparsing data to.
+        #'
+        #' @return the data.frame with the appended mboxparsing data
+        add.mboxparsing.data = function(data) {
+            logging::loginfo("Adding mboxparsing data.")
+            data[, "mboxparsing"] = NA
+            if("artifact" %in% colnames(data)) {
+                for(i in 1:nrow(data)) {
+                    mboxparsing.entries = self$get.mboxparsing.for.key(artifact = data[i, "artifact"])
+                    if(!length(mboxparsing.entries) == 0) {
+                        data$mboxparsing[i] = I(list(mboxparsing.entries))
+                    }
+                }
+            } else if("message.id" %in% colnames(data)) {
+                for(i in 1:nrow(data)) {
+                    mboxparsing.entries = self$get.mboxparsing.for.key(message.id = data[i, "message.id"])
+                    if(!length(mboxparsing.entries) == 0) {
+                        data$mboxparsing[i] = I(list(mboxparsing.entries))
                     }
                 }
             }
@@ -540,7 +575,7 @@ ProjectData = R6::R6Class("ProjectData",
         #'
         #' @return the issue data
         get.issues = function() {
-            logging::loginfo("Getting issue data")
+            logging::loginfo("Getting issue data.")
 
             ## if issues have not been read yet do this
             if(is.null(private$issues)) {
@@ -558,6 +593,29 @@ ProjectData = R6::R6Class("ProjectData",
             logging::loginfo("Setting issue data.")
             if (is.null(data)) data = data.frame()
             private$issues = data
+        },
+
+        #' Get the mboxparsing data.
+        #' If it doesn´t already exist call the read method.
+        #'
+        #' @return the mboxparsing data
+        get.mboxparsing = function() {
+            logging::loginfo("Getting mboxparsing data.")
+            ## if mboxparsing data has not been read yet do this
+            if(is.null(private$mboxparsing)) {
+                private$mboxparsing = read.mboxparsing(self$get.data.path())
+            }
+
+            return(private$mboxparsing)
+        },
+
+        #' Set the mboxparsing data to the given new data.
+        #'
+        #' @param data the new mboxparsing data
+        set.mboxparsing = function(data) {
+            logging::loginfo("Setting mboxparsing data.")
+            if(is.null(data)) data = data.frame()
+            private$mboxparsing = data
         },
 
         #' Get the list of artifacts of the project.
@@ -607,6 +665,32 @@ ProjectData = R6::R6Class("ProjectData",
                 return(result)
             } else {
                 result = private$pasta[private$pasta[["commit.hash"]] == commit.hash, "message.id"]
+                return(result)
+            }
+        },
+
+
+        #' Get mboxparsing data for a single key.
+        #' For a given message ID, the associated artifacts are returned.
+        #' For a given artifact, the associated message ids are returned.
+        #'
+        #' @param message.id the message ID to get the corresponding artifacts
+        #' @param artifact the artifact to get the corresponding message ids
+        #'
+        #' @return the mboxparsing entries found for the given key
+        get.mboxparsing.for.key = function(message.id = NULL, artifact = NULL) {
+            if(is.null(message.id) && is.null(artifact)) {
+                logging::logwarn("Neither message.id nor artifact specified.")
+                return()
+            }
+
+            self$get.mboxparsing()
+
+            if(!is.null(message.id)) {
+                result = private$mboxparsing[private$mboxparsing[["message.id"]] == message.id, "artifact"]
+                return(result)
+            } else {
+                result = private$mboxparsing[private$mboxparsing[["artifact"]] == artifact, "message.id"]
                 return(result)
             }
         },
