@@ -535,6 +535,11 @@ ProjectData = R6::R6Class("ProjectData",
             }
             private$extract.timestamps(source = "mails")
 
+            if (private$project.conf$get.value("mboxparsing")) {
+                self$get.mboxparsing()
+                private$mails = private$add.mboxparsing.data(private$mails)
+            }
+
             return(private$mails)
         },
 
