@@ -108,9 +108,9 @@ NetworkBuilder = R6::R6Class("NetworkBuilder",
 
         ## * * network caching ---------------------------------------------
 
-        authors.network.mail = NULL, # igraph
-        authors.network.cochange = NULL, # igraph
-        authors.network.issue = NULL, #igraph
+        authors.network.data.mail = NULL, # igraph
+        authors.network.data.cochange = NULL, # igraph
+        authors.network.data.issue = NULL, #igraph
         artifacts.network.cochange = NULL, # igraph
         artifacts.network.callgraph = NULL, # igraph
         artifacts.network.mail = NULL, # igraph
@@ -161,13 +161,13 @@ NetworkBuilder = R6::R6Class("NetworkBuilder",
         #' If it does not already exist build it first.
         #'
         #' @return the author network with cochange relation
-        get.author.network.cochange = function() {
-            logging::logdebug("get.author.network.cochange: starting.")
+        get.author.network.data.cochange = function() {
+            logging::logdebug("get.author.network.data.cochange: starting.")
 
             ## do not compute anything more than once
-            if (!is.null(private$authors.network.cochange)) {
-                logging::logdebug("get.author.network.cochange: finished. (already existing)")
-                return(private$authors.network.cochange)
+            if (!is.null(private$authors.network.data.cochange)) {
+                logging::logdebug("get.author.network.data.cochange: finished. (already existing)")
+                return(private$authors.network.data.cochange)
             }
 
             ## Get a list of all artifacts extracted from the commit data. Each artifact in this group is again a list
@@ -205,7 +205,7 @@ NetworkBuilder = R6::R6Class("NetworkBuilder",
             author.net.data[["vertices"]] = authors
 
             ## construct network from obtained data
-            author.net = construct.network.from.edge.list(
+            author.net.data = list(
                 author.net.data[["vertices"]],
                 author.net.data[["edges"]],
                 network.conf = private$network.conf,
@@ -214,24 +214,24 @@ NetworkBuilder = R6::R6Class("NetworkBuilder",
             )
 
             ## store network
-            private$authors.network.cochange = author.net
-            logging::logdebug("get.author.network.cochange: finished.")
+            private$authors.network.data.cochange = author.net.data
+            logging::logdebug("get.author.network.data.cochange: finished.")
 
-            return(author.net)
+            return(author.net.data)
         },
 
         #' Get the thread-based author relation as network.
         #' If it does not already exist build it first.
         #'
         #' @return the author network with mail relation
-        get.author.network.mail = function() {
+        get.author.network.data.mail = function() {
 
-            logging::logdebug("get.author.network.mail: starting.")
+            logging::logdebug("get.author.network.data.mail: starting.")
 
             ## do not compute anything more than once
-            if (!is.null(private$authors.network.mail)) {
-                logging::logdebug("get.author.network.mail: finished. (already existing)")
-                return(private$authors.network.mail)
+            if (!is.null(private$authors.network.data.mail)) {
+                logging::logdebug("get.author.network.data.mail: finished. (already existing)")
+                return(private$authors.network.data.mail)
             }
 
             ## construct edge list based on thread2author data
@@ -243,7 +243,8 @@ NetworkBuilder = R6::R6Class("NetworkBuilder",
             )
 
             ## construct network from obtained data
-            author.net = construct.network.from.edge.list(
+            ## FIXME rename this variable somehow. analogously for the other relations!
+            author.net.data = list(
                 author.net.data[["vertices"]],
                 author.net.data[["edges"]],
                 network.conf = private$network.conf,
@@ -252,19 +253,19 @@ NetworkBuilder = R6::R6Class("NetworkBuilder",
             )
 
             ## store network
-            private$authors.network.mail = author.net
-            logging::logdebug("get.author.network.mail: finished.")
+            private$authors.network.data.mail = author.net.data
+            logging::logdebug("get.author.network.data.mail: finished.")
 
-            return(author.net)
+            return(author.net.data)
         },
 
         ##get the issue based author relation as network
-        get.author.network.issue = function() {
-            logging::logdebug("get.author.network.issue: starting.")
+        get.author.network.data.issue = function() {
+            logging::logdebug("get.author.network.data.issue: starting.")
 
-            if (!is.null(private$authors.network.issue)) {
-                logging::logdebug("get.author.network.issue: finished. (already existing)")
-                return(private$authors.network.issue)
+            if (!is.null(private$authors.network.data.issue)) {
+                logging::logdebug("get.author.network.data.issue: finished. (already existing)")
+                return(private$authors.network.data.issue)
             }
 
             ## construct edge list based on issue2author data
@@ -276,7 +277,7 @@ NetworkBuilder = R6::R6Class("NetworkBuilder",
             )
 
             ## construct network from obtained data
-            author.net = construct.network.from.edge.list(
+            author.net.data = list(
                 author.net.data[["vertices"]],
                 author.net.data[["edges"]],
                 network.conf = private$network.conf,
@@ -284,10 +285,10 @@ NetworkBuilder = R6::R6Class("NetworkBuilder",
                 available.edge.attributes = private$proj.data$get.data.columns.for.data.source("issues")
             )
 
-            private$authors.network.issue = author.net
-            logging::logdebug("get.author.network.issue: finished.")
+            private$authors.network.data.issue = author.net.data
+            logging::logdebug("get.author.network.data.issue: finished.")
 
-            return(author.net)
+            return(author.net.data)
         },
 
         ## * * artifact networks -------------------------------------------
@@ -554,9 +555,9 @@ NetworkBuilder = R6::R6Class("NetworkBuilder",
         #' Reset the current environment in order to rebuild it.
         #' Has to be called whenever the data or configuration get changed.
         reset.environment = function() {
-            private$authors.network.mail = NULL
-            private$authors.network.cochange = NULL
-            private$authors.network.issue = NULL
+            private$authors.network.data.mail = NULL
+            private$authors.network.data.cochange = NULL
+            private$authors.network.data.issue = NULL
             private$artifacts.network.cochange = NULL
             private$artifacts.network.callgraph = NULL
             private$proj.data = private$proj.data.original
@@ -627,14 +628,15 @@ NetworkBuilder = R6::R6Class("NetworkBuilder",
             ## construct network
             relations = private$network.conf$get.value("author.relation")
             networks = lapply(relations, function(relation) {
-                network = switch(
+                network.data = switch(
                     relation,
-                    cochange = private$get.author.network.cochange(),
-                    mail = private$get.author.network.mail(),
-                    issue = private$get.author.network.issue(),
+                    cochange = private$get.author.network.data.cochange(),
+                    mail = private$get.author.network.data.mail(),
+                    issue = private$get.author.network.data.issue(),
                     stop(sprintf("The author relation '%s' does not exist.", rel))
-                    ## TODO construct edge lists here and merge those (inline the private methods)
                 )
+
+                network = do.call(construct.network.from.edge.list, network.data)
 
                 ## set edge attributes on all edges
                 igraph::E(network)$type = TYPE.EDGES.INTRA
